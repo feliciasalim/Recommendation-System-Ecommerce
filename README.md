@@ -21,11 +21,11 @@ Di tengah banyaknya pilihan produk yang tersedia, sistem rekomendasi dapat memba
 ## Business Understanding
 
 ### Problem Statements
-- Terlalu banyaknya jumlah produk di platform e-commerce menyebabkan pengguna cukup bingung mana produk yang mau dibeli. Hal ini membuat proses pencarian menjadi lebih rumit dan memakan waktu karena pengguna harus menelusuri banyak pilihan, membandingkan fitur, harga, dan ulasan, sehingga seringkali mereka merasa kewalahan dan akhirnya tidak mendapatkan produk yang paling tepat.
+- Terkadang pengguna cukup bingung apa produk yang mau dibeli saat mau belanja. Hal ini membuat proses pencarian menjadi lebih rumit dan memakan waktu karena pengguna harus menelusuri banyak pilihan, membandingkan fitur, harga, dan ulasan, sehingga seringkali mereka merasa kewalahan dan akhirnya tidak jadi membeli produk apapun.
 - Informasi produk yang sangat banyak dapat menimbulkan information overload (saat pencarian produk), sehingga menyulitkan pengguna dalam menyaring produk yang relevan secara efisien. Terkadang juga pada saat pencarian produk, sering muncul produk yang tidak sesuai dengan apa yang dicari. Pengguna menjadi kesulitan untuk memproses berbagai informasi yang tersedia sehingga dapat mengurangi kepuasan mereka dalam berbelanja. 
 
 ### Goals
-- Mempermudah pengguna dalam menemukan produk yang cocok dengan keinginan mereka (dari data ulasan, pembelian, dan data produk) melalui sistem rekomendasi yang lebih tepat dan relevan di platform e-commerce secara cepat. Dengan demikian, pengguna tidak perlu lagi untuk membuang waktu menelusuri banyak pilihan seperti melihat ulasan karena produk yang direkomendasi oleh sistem pasti ada pengguna yang pernah memberi ulasan tinggi.
+- Mempermudah pengguna dalam menemukan produk yang cocok dengan keinginan mereka (dari data ulasan, pembelian, dan data produk) melalui sistem rekomendasi yang lebih tepat di platform e-commerce secara cepat. Dengan demikian, pengguna tidak perlu lagi untuk membuang waktu menelusuri banyak pilihan seperti mencari cari produk (alias scrolling tidak henti).
 - Mengatasi kesulitan pengguna dalam mengelola banyaknya informasi produk dengan menampilkan hasil sistem rekomendasi pilihan produk yang mirip dengan preferensi personal sehingga mengeliminasi produk-produk yang berpotensi tidak menarik bagi pengguna. Alhasil, perngguna akan lebih leluasa untuk memilih produk selanjutnya yang akan dibeli.
 
 ### Solution Statements
@@ -357,25 +357,164 @@ Output:
 Terdapat banyak outlier pada fitur ReviewScore, yang menandakan data abnormal seperti adanya banyak review negatif pada data. Untuk fitur age, tidak ada outlier dan semuanya normal.
 
 ## Data Preparation
-Pada bagian ini Anda menerapkan dan menyebutkan teknik data preparation yang dilakukan. Teknik yang digunakan pada notebook dan laporan harus berurutan.
+Tahap ini adalah langkah penting untuk memastikan kualitas data sebelum digunakan dalam model machine learning. Tahap preparasi yang akan dilakukan adalah:
+- Drop data abnormal (Drop ReviewScore yang lebih dari 5 dan kurang dari 1)
+- Drop fitur yang tidak diperlukan
+- Memperbaiki data abnormal (Mengubah kolom Category sesuai dengan ProductName)
+- Round nilai ReviewScore untuk mempermudah proses modeling
+- Membuat ProductName menjadi unik karena nama produk pada dataset cukup umum (seperti T-shirt, Headphones)
+- Memastikan dataframe terakhir
+- Menyiapkan Content Based Filtering dataset
+- Menyiapkan Collaborative Filtering dataset (encode data dan train-test split)
 
-**Rubrik/Kriteria Tambahan (Opsional)**: 
-- Menjelaskan proses data preparation yang dilakukan
-- Menjelaskan alasan mengapa diperlukan tahapan data preparation tersebut.
+### Drop data abnormal
+Data abnormal seperti range ReviewScore yang tidak sesuai harus dihapus dikarenakan dapat menyebabkan noise/outlier yang dapat mempengaruhi proses modeling nanti. Ditambah lagi, data yang diluar range tidak dapat kita handle karena tidak bisa diketahui nilai review aslinya berapa. Oleh karena itu, ReviewScore yang tidak berada pada range 1-5 akan di drop.
+
+### Drop fitur yang tidak diperlukan
+Untuk menyiapkan dataset content based & collaborative filtering, kita tidak memerlukan fitur UserName, SignUpDate, PurchaseDate, Quantity, TotalAmount, HasDiscountApplied, DiscountRate, ReviewText, LastLogin, SessionDuration, DeviceType, & ReferralSource. Oleh karena itu, fitur tersebut bisa didrop saja untuk mempermudah & mempercepat proses modeling nantinya.
+
+### Memperbaiki data abnormal
+Data abnormal dimana ProductName tidak sesuai dengan Category barang (cth: T-shirt yang berada pada kategori lain selain Apparel) akan kita perbaiki dengan menyesuaikan nama produk ke kategori yang benar. Ini harus dilakukan untuk menjamin bahwa rekomendasi dari model tetap sesuai dengan hasil yang diinginkan.
+
+### Round nilai ReviewScore
+Ini dilakukan karena dapat mempermudah proses modeling nantinya. Jadi contohnya nilai 3,2 akan di round menjadi 3 dan nilai 4,6 akan diround ke 5 nantinya.
+
+### Membuat ProductName Menjadi Unik
+ProductName memiliki variabel T-shirt, Shoes, dll. yang sangat umum (bisa muncul lebih dari satu kali namun adalah produk yang berbeda dari productID yang unik) sehingga saat modeling nantinya dapat menyebabkan kebingunan pada model. Oleh karena itu, akan dilakukan kombinasi ProductName dengan ProductID supaya nama produk menjadi unik dan banyak variasi produk.
+
+### Memastikan dataframe terakhir
+Dataframe yang sudah melalui preprocessing akan dicek ulang untuk memastikan bahwa tidak ada nilai null, duplikat, maupun fitur yang tidak diinginkan pada dataset.
+
+### Menyiapkan Content Based Filtering dataset
+Untuk dataset content based filtering, kita hanya akan menggunakan kolom ProductID, ProductName, Category, dan Price dari dataframe akhir (final_df). Kemudian, kita cek data duplikat dan drop duplikat tersebut karena kita hanya membutuhkan data produk yang unik.  Persiapan dataset ini kita lakukan untuk tahap modeling content based filtering nantinya.
+
+### Menyiapkan Collaborative Filtering dataset
+Untuk dataset collaborative filtering, kita akan memakai UserID, ProductID, ProductName, Category, dan ReviewScore dari dataframe akhir (final_df). Kemudian, kita ubah UserID menjadi list tanpa nilai yang sama. Kita akan encode UserID ke angka dan sebaliknya. Hal yang sama kita terapkan juga untuk ProductID. Ini kita lakukan agar bisa mapping value tersebut ke dataframe. Kemudian kita akan shuffle data dan membaginya ke train & test set dengan rasio 80:20. Persiapan dataset ini kita lakukan untuk tahap modeling collaborative filtering nantinya.
 
 ## Modeling
-Tahapan ini membahas mengenai model sisten rekomendasi yang Anda buat untuk menyelesaikan permasalahan. Sajikan top-N recommendation sebagai output.
+Terdapat 2 model sistem rekomendasi yang digunakan untuk memberikan rekomendasi, yaitu:
 
-**Rubrik/Kriteria Tambahan (Opsional)**: 
-- Menyajikan dua solusi rekomendasi dengan algoritma yang berbeda.
-- Menjelaskan kelebihan dan kekurangan dari solusi/pendekatan yang dipilih.
+### 1. Content Based Filtering
+
+Content-Based Filtering adalah metode sistem rekomendasi yang merekomendasikan item/produk kepada pengguna berdasarkan kemiripan karakteristik item dengan item/produk yang disukai/dibeli pengguna sebelumnya. Sistem ini menganalisis fitur konten dari item (misalnya genre film atau kategori produk) dan mencocokkannya dengan preferensi pengguna. Content-based filtering digunakan karena dapat memberikan rekomendasi yang dipersonalisasi, sehingga bisa memberikan apa yang pengguna mau.
+
+Kelebihan:
+- Tidak memerlukan data dari pengguna lain (bisa bekerja untuk satu user saja).
+- Memberikan rekomendasi yang lebih personal sehingga meningkatkan kepuasan pengguna.
+- Tidak terpengaruh oleh popularitas item sehingga fokus ke data mirip saja.
+
+Kekurangan:
+- Susah untuk merekomendasikan item yang sangat berbeda dari history pengguna.
+- Bergantung pada kualitas fitur item yang artinya memerlukan data konten yang lengkap dan relevan.
+
+Proses yang dilakukan pada tahap modeling content based filtering adalah:
+- Inisialisasi TF-IDF: TF-IDF akan digunakan untuk mengubah data teks (seperti kategori, nama produk, dll.) menjadi representasi numerik, sehingga kita bisa hitung kemiripannya antar item menggunakan metode cosine similarity.
+- Hitung Cosine Similarity: Menghitung cosine similarity dari matriks TF-IDF yang didapat sebelumnya. Semakin tinggi nilainya, semakin mirip item tersebut, jadi besar kemungkinan mereka direkomendasikan bersama.
+- Membuat Rekomendasi: Disini akan diinisialisasi angka rekomendasi yang diinginkan (yaitu 5)
+```
+rec = recommendations('Shoes_8395')
+rec
+```
+Output:
+
+![image](https://github.com/user-attachments/assets/e416514c-5422-424f-a390-3f6288afb0e7)
+
+Jadi hasil rekomendasi untuk pengguna yang membeli Shoes_8395 akan mendapatkan rekomendasi kebanyakan dari kategori Apparel (top 5 rekomendasi: T-shirt_5509, T-shirt_6373, Shoes_2168, T-shirt_3229, dan Shoes_5176).
+
+### 2. Collborative Filtering
+
+Collaborative Filtering adalah metode sistem rekomendasi yang memberikan saran produk atau item kepada pengguna berdasarkan interaksi dan preferensi pengguna lain yang serupa. Jadi bukan menggunakan informasi konten dari item (seperti kategori atau deskripsi), melainkan memakai pola perilaku pengguna, seperti rating, pembelian, atau klik. Dengan kata lain, sistem ini menyimpulkan bahwa jika pengguna A dan pengguna B menyukai item yang sama, maka item lain yang disukai B kemungkinan juga akan disukai A.
+
+Kelebihan:
+- Tidak memerlukan informasi detail tentang item
+- Cocok untuk berbagai jenis data
+- Dapat menemukan hubungan tidak terduga dari antar item/produk
+
+Kekurangan:
+- Cold Start Problem yaitu sulit merekomendasikan untuk pengguna yang belum punya cukup interaksi atau rating.
+- Jika dataset sangat besar dan punya banyak nilai kosong, model bisa kesulitan menemukan pola yang kuat.
+- Popularitas bisa mendominasi hasil rekomendasi.
+
+Proses yang dilakukan pada tahap modeling collaborative filtering adalah:
+- Ubah UserID dan ProductID menjadi embedding vector agar model bisa belajar representasi dari user dan produk.
+- Tambahkan bias untuk setiap user dan produk untuk menangkap preferensi umum.
+- Hitung dot product antara embedding user dan produk untuk mengukur seberapa cocok user dengan produk.
+- Tambahkan bias user dan produk ke hasil dot product  untuk menyesuaikan prediksi agar lebih akurat.
+- Gunakan aktivasi sigmoid → agar output berada dalam rentang 0–1 sebagai probabilitas interaksi.
+- Compile model dengan BinaryCrossentropy, optimizer Adam, dan evaluasi dengan metrik RMSE.
+- Cari rekomendasi
+
+**Training:**
+Menunjukkan hanya epoch 46-50
+
+![image](https://github.com/user-attachments/assets/0ff714fa-6966-4412-81a9-1aa7aea311e2)
+
+Hasil akhir menunjukkan RMSE dari data train 0.14 dan RMSE dari data validasi 0.238.
+
+**Hasil Rekomendasi:**
+```
+Showing recommendations for user: 72950
+===========================
+Top 10 product recommendations
+--------------------------------
+Book_2771 : Books
+Shoes_2841 : Apparel
+Headphones_7764 : Accessories
+Smartphone_8182 : Electronics
+Headphones_5405 : Accessories
+Shoes_9131 : Apparel
+Book_4149 : Books
+Shoes_5958 : Apparel
+Smartphone_7589 : Electronics
+Laptop_9798 : Electronics
+```
+Top 10 rekomendasi yang diberikan pada user 74035 adalah Shoes_1584, Smartphone_2408, Shoes_2841, Smartphone_8182, Headphones_5405, Shoes_9131, T-shirt_1447, Laptop_9798, T-shirt_7063, dan Headphones_4657.
 
 ## Evaluation
-Pada bagian ini Anda perlu menyebutkan metrik evaluasi yang digunakan. Kemudian, jelaskan hasil proyek berdasarkan metrik evaluasi tersebut.
+Disini, model akan dievaluasi sesuai dengan metrik masing-masing:
 
-Ingatlah, metrik evaluasi yang digunakan harus sesuai dengan konteks data, problem statement, dan solusi yang diinginkan.
+### 1. Content Based Filtering - Metrik Precision at k
+Disini untuk modeling content based filtering, metrik evaluasi yang digunakan adalah **precision at k**. Precision adalah metrik evaluasi yang mengukur seberapa banyak rekomendasi terbaik (top-k rekomendasi) yang relevan terhadap kebutuhan pengguna. Di aplikasi ecommerce, pengguna biasanya hanya melihat beberapa rekomendasi teratas. Jadi, kita perlu tahu apakah rekomendasi yang paling atas benar-benar berguna dan sesuai dengan selera mereka dan precision at k ini dapat melihat apakah sistem mampu mengurutkan rekomendasi dengan benar dengan menempatkan item yang relevan di posisi atas.
 
-**Rubrik/Kriteria Tambahan (Opsional)**: 
-- Menjelaskan formula metrik dan bagaimana metrik tersebut bekerja.
+Cara kerja:
+- Ambil top-k rekomendasi dari model (misal k=5).
+- Identifikasi rekomendasi dari produk yang diinput.
+- Hitung item/produk relevan yang muncul di top-k rekomendasi.
+- Hitung precision dengan membagi jumlah item relevan dengan k.
 
+Rumus:
 
+![image](https://github.com/user-attachments/assets/4afbe4b2-bb0d-4264-bf05-226061db2727)
+
+dimana:
+- Item relevan adalah produk/item yang memang disukai pengguna.
+- Top-k rekomendasi adalah k produk yang direkomendasikan pertama kali oleh sistem.
+
+**Hasil Evaluasi:**
+```
+Precision: 1.00
+```
+Precision yang dihasilkan 1.00, berarti semua rekomendasi dalam top-k yang dihasilkan adalah hasil yang relevan untuk pengguna tersebut.
+
+### 2. Collaborative Filtering - Metrik Root Mean Squuared Error
+
+Untuk collaborative filtering, kita akan menggunakan metrik evaluasi **Root Mean Squuared Error** (RMSE). RMSE adalah metrik evaluasi yang digunakan untuk mengukur perbedaan antara nilai yang diprediksi oleh model dengan nilai asli. Dalam konteks sistem rekomendasi berbasis collaborative filtering yang memprediksi hasil, RMSE menunjukkan seberapa dekat prediksi model dengan hasil sebenarnya yang diberikan oleh pengguna. Dengan RMSE, kita dapat melihat tren error selama training dan mendeteksi overfitting atau underfitting. Rumus:
+
+![image](https://github.com/user-attachments/assets/7da7c14b-2a03-4b0e-bd42-04acbfa9e674)
+
+Dimana:
+- N = jumlah total data (jumlah prediksi yang dibandingkan)
+- ri= nilai asli
+- ri^ = nilai yang diprediksi oleh model
+
+Disini akan divisualisasikan RMSE dari model yang dibangun sebelumnya untuk melihat apakah model mengalami overfitting atau underfitting:
+
+![image](https://github.com/user-attachments/assets/7cd216f0-0f8f-4754-980d-62745de120da)
+
+- Training Loss sangat fluktuatif di awal sehingga menunjukkan tanda-tanda overfitting. Namun, bisa dilihat training loss turun signifikan yang menandakan model semakin hafal data training.
+- Testing loss seimbang pada hampir semua epoch. Ini menunjukkan tidak ada perbaikan performa pada data testing yang mengakibatkan model tidak mampu generalisasi dengan baik.
+  
+## Conclusion 
+- RMSE pada data train mencapai 0.14 dan RMSE dari data validasi mencapai 0.238.
+- Model content based filtering memberikan 5 hasil rekomendasi produk kepada pengguna berdasarkan produk yang dibeli sebelumnya dan mencapai presisi sebanyak 100%.
+- Model collaborative filtering dapat memberikan 10 hasil rekomendasi produk kepada pengguna berdasarkan data ulasan dan produk dan sesuai dengan preferensi pengguna lain dengan preferensi yang sama.
